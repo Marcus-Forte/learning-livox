@@ -30,6 +30,7 @@ uint8_t connection_handle_ = 0;
 
 Mid40::Mid40() = default;
 
+// TODO check state after powering on.
 void Mid40::startSampling() {
   std::cout << "LidarStartSampling" << std::endl;
   LidarStartSampling(
@@ -39,7 +40,23 @@ void Mid40::startSampling() {
       nullptr);
 }
 
-void Mid40::stopSampling() {}
+void Mid40::stopSampling() { LidarStopSampling(connection_handle_, {}, {}); }
+
+void Mid40::setMode(Mode mode) {
+  if (mode == Mode::Normal) {
+    LidarSetMode(connection_handle_, LidarMode::kLidarModeNormal, {}, {});
+  } else if (mode == Mode::PowerSave) {
+    std::cout << "powersave\n";
+    LidarSetMode(connection_handle_, LidarMode::kLidarModePowerSaving,
+                 [](livox_status status, uint8_t handle, uint8_t response,
+                    void *client_data) {
+                   std::cout
+                       << "Powersave mode status: " << std::to_string(status)
+                       << std::endl;
+                 },
+                 {});
+  }
+}
 void Mid40::init() {
 
   if (!Init()) {
@@ -109,7 +126,6 @@ void Mid40::init() {
 
   std::cout << "Set cartesian coordinates " << std::endl;
   SetCartesianCoordinate(connection_handle_, {}, nullptr);
-  // SetSphericalCoordinate(connection_handle_, {}, nullptr);
   SetDataCallback(
       connection_handle_,
       [](uint8_t handle, LivoxEthPacket *data, uint32_t data_num,
@@ -119,8 +135,6 @@ void Mid40::init() {
         if (data) {
           // std::cout << "cvt: " << data_num << "pts" << std::endl;
           auto cloud = convertData(data, data_num);
-          std::cout << "data type: " << std::to_string(data->data_type)
-                    << std::endl;
           {
             std::lock_guard<std::mutex> lock(g_mutex);
             this_->queue_.push_front(cloud);
@@ -138,7 +152,10 @@ PointCloud3 Mid40::getScan() {
   if (queue_.empty())
     return {};
 
-  const auto last = queue_.front();
-  queue_.pop_front();
-  return last;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    const auto last = queue_.front();
+    queue_.pop_front();
+    return last;
+  }
 }

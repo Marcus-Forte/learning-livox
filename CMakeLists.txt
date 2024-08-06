@@ -14,5 +14,10 @@ add_library(mid40 src/mid40.cc)
 target_include_directories(mid40 PUBLIC include)
 target_link_libraries(mid40 livox_sdk_static)
 
+
+
+
+add_subdirectory(grpc)
+
 add_executable(app src/app.cc)
-target_link_libraries(app mid40)
+target_link_libraries(app mid40 grpc_server)

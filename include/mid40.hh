@@ -12,6 +12,7 @@ public:
   PointCloud3 getScan() override;
   void startSampling() override;
   void stopSampling() override;
+  void setMode(Mode mode) override;
 
 private:
   std::thread worker_;
