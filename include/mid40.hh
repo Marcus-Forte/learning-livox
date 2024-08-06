@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ILidar.hh"
-#include "livox_sdk.h"
+#include <deque>
 #include <thread>
 
 class Mid40 : public ILidar {
@@ -15,7 +15,7 @@ public:
 
 private:
   std::thread worker_;
-  void data_callback(uint8_t handle, LivoxEthPacket *data, uint32_t data_num,
-                     void *client_data);
-  // uint8_t connection_handle_;
+  std::deque<PointCloud3> queue_;
+
+  size_t queue_limit_ = 100;
 };

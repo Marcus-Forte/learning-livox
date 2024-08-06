@@ -1,9 +1,12 @@
 #pragma once
+#include <stdint.h>
 #include <vector>
+
 struct Point3 {
   float x;
   float y;
   float z;
+  uint8_t intensity;
 };
 
 using PointCloud3 = std::vector<Point3>;
