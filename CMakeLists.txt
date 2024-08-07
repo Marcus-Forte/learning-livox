@@ -10,14 +10,14 @@ endif()
 
 include(cmake/format.cmake)
 
-add_library(mid40 src/mid40.cc)
-target_include_directories(mid40 PUBLIC include)
-target_link_libraries(mid40 livox_sdk_static)
-
-
-
+add_library(mid src/mid40.cc src/mid360.cc)
+target_include_directories(mid PUBLIC include)
+target_link_libraries(mid livox_sdk_static livox_lidar_sdk_static)
 
 add_subdirectory(grpc)
 
 add_executable(app src/app.cc)
-target_link_libraries(app mid40 grpc_server)
+target_link_libraries(app mid grpc_server)
+
+add_executable(app360 src/app360.cc)
+target_link_libraries(app360 mid grpc_server)

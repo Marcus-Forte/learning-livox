@@ -1,10 +1,10 @@
 #pragma once
 
+#include "ILidar.hh" // # TODO fix dependency?
 #include "get_points_service.hh"
 #include <future>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/server_builder.h>
-#include "ILidar.hh" // # TODO fix dependency?
 
 class gRPCServer {
 public:

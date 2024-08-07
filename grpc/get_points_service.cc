@@ -3,6 +3,8 @@
 #include <grpcpp/support/status.h>
 #include <thread>
 
+#include "colormap.hh"
+
 ScanService::ScanService() = default;
 
 grpc::Status
@@ -27,10 +29,13 @@ ScanService::getScan(::grpc::ServerContext *context,
         pt->set_x(point.x);
         pt->set_y(point.y);
         pt->set_z(point.z);
+
+        float r, g, b;
+        Int2RGB(static_cast<float>(point.intensity), r, g, b);
         // 2D Lidar
-        pt->set_r(0.0);
-        pt->set_g(1.0);
-        pt->set_b(0.0);
+        pt->set_r(r);
+        pt->set_g(g);
+        pt->set_b(b);
       }
       writer->Write(point_cloud);
       scan_queue_.pop_front();

@@ -4,7 +4,7 @@
 		{
 			"type": "shell",
 			"label": "deploy",
-			"command": "scp ${workspaceFolder}/build/app root@${config:target_ip}:",
+			"command": "scp ${workspaceFolder}/build/app360 root@${config:target_ip}:",
 			"problemMatcher": []
 		}
 	]

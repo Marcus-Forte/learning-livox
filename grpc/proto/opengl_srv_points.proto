@@ -24,7 +24,6 @@ message PointCloud3 {
     optional float point_size=3;
 }
 
-
 service addToScene {
     rpc addPoint(Point3) returns (google.protobuf.Empty);
     rpc addPointCloud(PointCloud3) returns (google.protobuf.Empty);

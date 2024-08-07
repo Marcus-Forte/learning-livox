@@ -7,6 +7,12 @@
 #include <livox_def.h>
 #include <mutex>
 
+std::condition_variable g_cv;
+std::mutex g_mutex;
+bool g_connected = false;
+
+uint8_t connection_handle_ = 0;
+
 static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
                                unsigned int data_pts) {
   const LivoxRawPoint *data_ =
@@ -21,12 +27,6 @@ static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
       });
   return {cloud};
 }
-
-std::condition_variable g_cv;
-std::mutex g_mutex;
-bool g_connected = false;
-
-uint8_t connection_handle_ = 0;
 
 Mid40::Mid40() = default;
 
