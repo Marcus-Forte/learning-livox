@@ -1,8 +1,10 @@
 #include "get_points_service.hh"
 #include <chrono>
 #include <grpcpp/support/status.h>
+#include <memory>
 #include <thread>
 
+#include "ILidar.hh"
 #include "colormap.hh"
 
 ScanService::ScanService() = default;
@@ -20,11 +22,11 @@ ScanService::getScan(::grpc::ServerContext *context,
   s_client_connected = true;
   while (!context->IsCancelled()) {
 
-    while (!scan_queue_.empty()) {
-      auto scan = scan_queue_.front();
+    if (scan_data_ != nullptr) {
+
       lidar::PointCloud3 point_cloud;
 
-      for (const auto &point : scan) {
+      for (const auto &point : *scan_data_) {
         auto pt = point_cloud.add_points();
         pt->set_x(point.x);
         pt->set_y(point.y);
@@ -38,7 +40,7 @@ ScanService::getScan(::grpc::ServerContext *context,
         pt->set_b(b);
       }
       writer->Write(point_cloud);
-      scan_queue_.pop_front();
+      scan_data_.reset();
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
@@ -47,9 +49,6 @@ ScanService::getScan(::grpc::ServerContext *context,
   return ::grpc::Status::OK;
 }
 
-void ScanService::putScan(const std::vector<Point3> &scan) {
-  scan_queue_.push_front(scan);
-  if (scan_queue_.size() > 1) {
-    scan_queue_.pop_back();
-  }
+void ScanService::putScan(const PointCloud3 &scan) {
+  scan_data_ = std::make_unique<PointCloud3>(scan);
 }

@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
   }
 
   const int accumulate = atoi(argv[2]);
-
+  std::cout << "Accu samples: " << accumulate << std::endl;
   Mid360 lidar(argv[1], accumulate);
   lidar.init();
 
@@ -26,31 +26,43 @@ int main(int argc, char **argv) {
   gRPCServer server;
   server.start();
 
-  std::cout << "Accu samples: " << accumulate << std::endl;
-
-  unsigned int idx = 0;
   std::chrono::high_resolution_clock::time_point last =
       std::chrono::high_resolution_clock::now();
   std::chrono::high_resolution_clock::time_point current;
+
   while (true) {
 
     const auto imu = lidar.getImuSample();
 
     if (imu.has_value()) {
-      std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax, imu->ay,
-                               imu->az, imu->gx, imu->gy, imu->gz);
+      //   std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax,
+      //                            imu->ay, imu->az, imu->gx, imu->gy,
+      //                            imu->gz);
+      // }
+      // current = std::chrono::high_resolution_clock::now();
+      // std::cout << "Imu time diff: "
+      //           << std::chrono::duration_cast<std::chrono::microseconds>(
+      //                  current - last)
+      //                  .count()
+      //           << " us" << std::endl;
+
+      // last = current;
+    }
+    const auto points = lidar.getScan();
+
+    if (!points.empty()) {
+
       current = std::chrono::high_resolution_clock::now();
-      std::cout << "Imu time diff: "
+      std::cout << "AccScan time diff: "
                 << std::chrono::duration_cast<std::chrono::microseconds>(
                        current - last)
                        .count()
                 << " us" << std::endl;
 
       last = current;
-    }
-    const auto points = lidar.getScan();
 
-    if (!points.empty()) {
+      std::cout << "Sending: " << points.size() << " points" << std::endl;
+
       server.put_scan(points);
     }
   }
