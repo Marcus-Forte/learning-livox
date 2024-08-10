@@ -37,17 +37,16 @@ int main(int argc, char **argv) {
     const auto imu = lidar.getImuSample();
 
     if (imu.has_value()) {
-      // std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax,
-      // imu->ay,
-      //                          imu->az, imu->gx, imu->gy, imu->gz);
-      // current = std::chrono::high_resolution_clock::now();
-      // std::cout << "Imu time diff: "
-      //           << std::chrono::duration_cast<std::chrono::microseconds>(
-      //                  current - last)
-      //                  .count()
-      //           << " us" << std::endl;
+      std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax, imu->ay,
+                               imu->az, imu->gx, imu->gy, imu->gz);
+      current = std::chrono::high_resolution_clock::now();
+      std::cout << "Imu time diff: "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       current - last)
+                       .count()
+                << " us" << std::endl;
 
-      // last = current;
+      last = current;
     }
     const auto points = lidar.getScan();
 

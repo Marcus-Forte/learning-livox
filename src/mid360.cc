@@ -169,7 +169,7 @@ PointCloud3 Mid360::getScan() {
 
   {
     std::lock_guard<std::mutex> lock(g_lidar_mutex);
-    const auto &last = queue_.front();
+    const auto last = queue_.front();
     queue_.pop_front();
     return last;
   }
