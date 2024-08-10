@@ -2,7 +2,6 @@
 
 #include "ILidar.hh"
 #include <deque>
-#include <thread>
 
 class Mid40 : public ILidar {
 
@@ -15,7 +14,6 @@ public:
   void setMode(Mode mode) override;
 
 private:
-  std::thread worker_;
   std::deque<PointCloud3> queue_;
 
   size_t queue_limit_ = 100;

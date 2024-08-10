@@ -1,6 +1,6 @@
 #pragma once
 #include "ILidar.hh"
-#include "points.grpc.pb.h"
+#include "lidar.grpc.pb.h"
 
 class ScanService : public lidar::LidarService::Service {
 public:

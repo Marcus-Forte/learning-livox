@@ -3,7 +3,7 @@ ARG platform=arm64
 # Cross-build for Raspberrypi 5
 FROM --platform=${platform} ubuntu:noble
 
-RUN apt-get update && apt-get install -y git build-essential cmake clangd clang-format rpm g++-11
+RUN apt-get update && apt-get install -y git build-essential cmake clangd clang-format clang-tidy rpm g++-11
 
 WORKDIR /deps
 

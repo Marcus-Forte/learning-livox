@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 project(livox-mid40-app)
 
 set(CMAKE_CXX_STANDARD 20)
+option(USE_CLANG_TIDY "Use clang tidy" OFF)
+if(USE_CLANG_TIDY)
+message(STATUS "Using clang tidy")
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+endif()
+
 find_library(LIVOX_LIB livox_sdk_static)
 
 if(NOT LIVOX_LIB)

@@ -1,7 +1,6 @@
 #include "mid40.hh"
 #include "ILidar.hh"
 #include "livox_sdk.h"
-#include <algorithm>
 #include <condition_variable>
 #include <iostream>
 #include <livox_def.h>
@@ -9,22 +8,22 @@
 
 std::condition_variable g_cv;
 std::mutex g_mutex;
-bool g_connected = false;
+bool g_sync;
 
 uint8_t connection_handle_ = 0;
 
 static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
                                unsigned int data_pts) {
-  const LivoxRawPoint *data_ =
-      reinterpret_cast<const LivoxRawPoint *>(eth_packet->data);
+  const auto *data_ = reinterpret_cast<const LivoxRawPoint *>(eth_packet->data);
 
   PointCloud3 cloud(data_pts);
-  std::transform(
-      data_, data_ + data_pts, cloud.begin(), [](const LivoxRawPoint &pt) {
-        return Point3{static_cast<float>(pt.x) / 1000.0f,
-                      static_cast<float>(pt.y) / 1000.0f,
-                      static_cast<float>(pt.z) / 1000.0f, pt.reflectivity};
-      });
+  for (auto &point : cloud) {
+    point.x = static_cast<float>(data_->x) / 1000.0F;
+    point.y = static_cast<float>(data_->y) / 1000.0F;
+    point.z = static_cast<float>(data_->z) / 1000.0F;
+    point.intensity = data_->reflectivity;
+    data_++;
+  }
   return {cloud};
 }
 
@@ -70,7 +69,7 @@ void Mid40::init() {
     throw std::runtime_error("Unable to initialize Mid40!");
   }
 
-  std::cout << "Init OK!" << std::endl;
+  std::cout << "Init OK!\n";
   LivoxSdkVersion _sdkversion;
   GetLivoxSdkVersion(&_sdkversion);
   printf("Livox SDK version %d.%d.%d\n", _sdkversion.major, _sdkversion.minor,
@@ -101,6 +100,7 @@ void Mid40::init() {
     }
   });
 
+  g_sync = false;
   SetDeviceStateUpdateCallback([](const DeviceInfo *info, DeviceEvent type) {
     if (info == nullptr) {
       return;
@@ -108,8 +108,8 @@ void Mid40::init() {
 
     if (type == kEventConnect) {
       printf("[WARNING] Lidar sn: [%s] Connect!!!\n", info->broadcast_code);
-      std::unique_lock<std::mutex> lock(g_mutex);
-      g_connected = true;
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_sync = true;
       g_cv.notify_one();
     } else if (type == kEventDisconnect) {
       printf("[WARNING] Lidar sn: [%s] Disconnect!!!\n", info->broadcast_code);
@@ -117,10 +117,9 @@ void Mid40::init() {
       printf("[WARNING] Lidar sn: [%s] StateChange!!!\n", info->broadcast_code);
     }
   });
-  // Wait until lidar is connected.
   {
     std::unique_lock<std::mutex> lock(g_mutex);
-    g_cv.wait(lock, [] { return g_connected; });
+    g_cv.wait(lock, [] { return g_sync; });
   }
   std::cout << "Connected!" << std::endl;
 
@@ -130,9 +129,9 @@ void Mid40::init() {
       connection_handle_,
       [](uint8_t handle, LivoxEthPacket *data, uint32_t data_num,
          void *client_data) {
-        auto this_ = reinterpret_cast<decltype(this)>(client_data);
+        auto *this_ = reinterpret_cast<decltype(this)>(client_data);
         // Convert
-        if (data) {
+        if (data == nullptr) {
           // std::cout << "cvt: " << data_num << "pts" << std::endl;
           auto cloud = convertData(data, data_num);
           {
@@ -149,8 +148,9 @@ void Mid40::init() {
 }
 
 PointCloud3 Mid40::getScan() {
-  if (queue_.empty())
+  if (queue_.empty()) {
     return {};
+  }
 
   {
     std::lock_guard<std::mutex> lock(g_mutex);

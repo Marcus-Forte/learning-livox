@@ -12,9 +12,9 @@ ScanService::getScan(::grpc::ServerContext *context,
                      const ::google::protobuf::Empty * /*request*/,
                      ::grpc::ServerWriter<lidar::PointCloud3> *writer) {
   static bool s_client_connected = false;
-  if (s_client_connected)
-    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client supported");
+  if (s_client_connected) {
+    return {grpc::StatusCode::RESOURCE_EXHAUSTED, "Only one client supported"};
+  }
 
   std::cout << "Start stream." << std::endl;
   s_client_connected = true;
@@ -40,7 +40,7 @@ ScanService::getScan(::grpc::ServerContext *context,
       writer->Write(point_cloud);
       scan_queue_.pop_front();
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
   std::cout << "Canceled stream." << std::endl;
   s_client_connected = false;
@@ -49,7 +49,6 @@ ScanService::getScan(::grpc::ServerContext *context,
 
 void ScanService::putScan(const std::vector<Point3> &scan) {
   scan_queue_.push_front(scan);
-  // Limit to 100 samples
   if (scan_queue_.size() > 1) {
     scan_queue_.pop_back();
   }

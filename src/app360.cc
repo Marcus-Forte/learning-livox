@@ -5,48 +5,54 @@
 #include <thread>
 
 void printUsage() {
-  std::cout << "Usage: app [config] [powersave] (opt)[accupts]" << std::endl;
+  std::cout << "Usage: app [config] (opt)[accusamples]" << std::endl;
 }
 int main(int argc, char **argv) {
 
-  if (argc < 2) {
+  if (argc < 3) {
     printUsage();
     exit(0);
   }
 
-  Mid360 lidar(argv[1]);
+  const int accumulate = atoi(argv[2]);
+
+  Mid360 lidar(argv[1], accumulate);
   lidar.init();
 
-  if (argc > 2) {
-    const std::string arg = argv[2];
-    if (arg == "powersave") {
-      std::cout << "power save mode..." << std::endl;
-      lidar.setMode(Mode::PowerSave);
-      exit(0);
-    }
-  }
+  lidar.setMode(Mode::Normal);
 
   lidar.startSampling();
 
   gRPCServer server;
   server.start();
 
-  const int accumulate = argc > 4 ? atoi(argv[3]) : 100;
+  std::cout << "Accu samples: " << accumulate << std::endl;
 
-  PointCloud3 accumulated;
   unsigned int idx = 0;
+  std::chrono::high_resolution_clock::time_point last =
+      std::chrono::high_resolution_clock::now();
+  std::chrono::high_resolution_clock::time_point current;
   while (true) {
 
+    const auto imu = lidar.getImuSample();
+
+    if (imu.has_value()) {
+      // std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax,
+      // imu->ay,
+      //                          imu->az, imu->gx, imu->gy, imu->gz);
+      // current = std::chrono::high_resolution_clock::now();
+      // std::cout << "Imu time diff: "
+      //           << std::chrono::duration_cast<std::chrono::microseconds>(
+      //                  current - last)
+      //                  .count()
+      //           << " us" << std::endl;
+
+      // last = current;
+    }
     const auto points = lidar.getScan();
 
-    if (points.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    } else {
-      accumulated.insert(accumulated.end(), points.begin(), points.end());
-      if (idx++ % accumulate == 0) {
-        server.put_scan(accumulated);
-        accumulated.clear();
-      }
+    if (!points.empty()) {
+      server.put_scan(points);
     }
   }
 }

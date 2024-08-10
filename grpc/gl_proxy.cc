@@ -1,6 +1,6 @@
 
+#include "lidar.grpc.pb.h"
 #include "opengl_srv_points.grpc.pb.h"
-#include "points.grpc.pb.h"
 #include <chrono>
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/channel.h>
@@ -11,9 +11,23 @@
 #include <grpcpp/server_builder.h>
 #include <memory>
 #include <thread>
+
 // Simple application that subscribes to lidar service and publishes to opengl
 // service: https://github.com/Marcus-Forte/learning-opengl
 
+gl::PointCloud3 fromLidarService(const lidar::PointCloud3 &msg) {
+  gl::PointCloud3 ret;
+  for (const auto &msg_pt : msg.points()) {
+    auto *point = ret.add_points();
+    point->set_x(msg_pt.x());
+    point->set_y(msg_pt.y());
+    point->set_z(msg_pt.z());
+    point->set_r(msg_pt.r());
+    point->set_g(msg_pt.g());
+    point->set_b(msg_pt.b());
+  }
+  return ret;
+}
 void printUsage() {
   std::cout << "gl_proxy [lidar server ip:port] [opengl server ip:port]"
             << std::endl;
@@ -59,13 +73,18 @@ int main(int argc, char **argv) {
         lidar_stub = lidar::LidarService::NewStub(channel);
         reader = lidar_stub->getScan(lidar_context.get(), empty_response);
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       continue;
     }
 
-    auto gl_cloud = reinterpret_cast<gl::PointCloud3 *>(&msg);
-    gl_cloud->set_entity_name("rplidar");
-    if (!writer->Write(*gl_cloud)) {
+    const auto tick = std::chrono::high_resolution_clock::now();
+    auto gl_cloud = fromLidarService(msg);
+    const auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
+                           std::chrono::high_resolution_clock::now() - tick)
+                           .count();
+    std::cout << "Conversion took: " << delta << " us" << std::endl;
+    gl_cloud.set_entity_name("lidar");
+    if (!writer->Write(gl_cloud)) {
       auto state = channel_opengl->GetState(true);
       std::cerr << "Error writing to opengl server " << openGlSrvIp
                 << " code: " << state << std::endl;

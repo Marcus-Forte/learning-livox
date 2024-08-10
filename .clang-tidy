@@ -1,0 +1,11 @@
+---
+Checks: '-*,
+performance-*,
+modernize-*,
+readability-*,
+-modernize-use-trailing-return-type,
+-performance-avoid-endl,
+-readability-magic-numbers
+'
+WarningsAsErrors: '*'
+SystemHeaders: false

@@ -8,6 +8,6 @@ message(STATUS "Formatter found!")
     "grpc/*.hh")
   string (REPLACE ";" " " sourcefiles "${sourcefiles}")
   add_custom_target(format ALL
-  COMMAND sh -c "clang-format -i ${sourcefiles} --verbose"
+  COMMAND sh -c "clang-format -i ${sourcefiles}"
   VERBATIM)
 endif()
