@@ -8,12 +8,14 @@
 class Mid360 : public ILidar {
 
 public:
+  enum class ScanPattern { Repetitive, NonRepetitive, LowFrameRate };
   Mid360(const std::string &&config, size_t accumulate_scans);
   void init() override;
   PointCloud3 getScan() override;
   void startSampling() override;
   void stopSampling() override;
   void setMode(Mode mode) override;
+  void setScanPattern(ScanPattern pattern) const;
 
   std::optional<ImuData> getImuSample();
 
@@ -27,4 +29,6 @@ private:
   const size_t accumulate_scans_;
 
   size_t scan_count_;
+
+  uint32_t connection_handle_;
 };

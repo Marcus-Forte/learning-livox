@@ -2,14 +2,14 @@
 #include "mid360.hh"
 #include <chrono>
 #include <iostream>
-#include <thread>
 
 void printUsage() {
-  std::cout << "Usage: app [config] (opt)[accusamples]" << std::endl;
+  std::cout << "Usage: app [config] [accusamples] [mode: 0, 1,2,3]"
+            << std::endl;
 }
 int main(int argc, char **argv) {
 
-  if (argc < 3) {
+  if (argc < 4) {
     printUsage();
     exit(0);
   }
@@ -19,7 +19,20 @@ int main(int argc, char **argv) {
   Mid360 lidar(argv[1], accumulate);
   lidar.init();
 
+  const auto mode = atoi(argv[3]);
+
+  if (mode == 0) {
+    lidar.setMode(Mode::PowerSave);
+    exit(0);
+  }
   lidar.setMode(Mode::Normal);
+  if (mode == 1) {
+    lidar.setScanPattern(Mid360::ScanPattern::NonRepetitive);
+  } else if (mode == 2) {
+    lidar.setScanPattern(Mid360::ScanPattern::Repetitive);
+  } else {
+    lidar.setScanPattern(Mid360::ScanPattern::LowFrameRate);
+  }
 
   lidar.startSampling();
 
