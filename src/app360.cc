@@ -1,4 +1,5 @@
 #include <chrono>
+#include <iomanip>
 #include <iostream>
 
 #include "grpc_server.hh"
@@ -23,15 +24,15 @@ int main(int argc, char** argv) {
 
   if (mode == 0) {
     lidar.setMode(Mode::PowerSave);
-    exit(0);
-  }
-  lidar.setMode(Mode::Normal);
-  if (mode == 1) {
-    lidar.setScanPattern(Mid360::ScanPattern::NonRepetitive);
-  } else if (mode == 2) {
-    lidar.setScanPattern(Mid360::ScanPattern::Repetitive);
   } else {
-    lidar.setScanPattern(Mid360::ScanPattern::LowFrameRate);
+    lidar.setMode(Mode::Normal);
+    if (mode == 1) {
+      lidar.setScanPattern(Mid360::ScanPattern::NonRepetitive);
+    } else if (mode == 2) {
+      lidar.setScanPattern(Mid360::ScanPattern::Repetitive);
+    } else {
+      lidar.setScanPattern(Mid360::ScanPattern::LowFrameRate);
+    }
   }
 
   lidar.startSampling();
@@ -43,26 +44,17 @@ int main(int argc, char** argv) {
       std::chrono::high_resolution_clock::now();
   std::chrono::high_resolution_clock::time_point current;
 
+  std::cout << std::fixed << std::setprecision(9);
   while (true) {
     const auto imu = lidar.getImuSample();
 
     if (imu.has_value()) {
-      //   std::cout << std::format("Imu ok!: {} {} {} {} {} {}\n", imu->ax,
-      //                            imu->ay, imu->az, imu->gx, imu->gy,
-      //                            imu->gz);
-      // }
-      // current = std::chrono::high_resolution_clock::now();
-      // std::cout << "Imu time diff: "
-      //           << std::chrono::duration_cast<std::chrono::microseconds>(
-      //                  current - last)
-      //                  .count()
-      //           << " us" << std::endl;
-
-      // last = current;
+      // std::cout << "Imu time: " << imu->timestamp << std::endl;
+      // std::cout << imu->az << "," << imu->timestamp << std::endl;
     }
-    const auto points = lidar.getScan();
+    const auto cloud = lidar.getScan();
 
-    if (!points.empty()) {
+    if (!cloud.points.empty()) {
       current = std::chrono::high_resolution_clock::now();
       std::cout << "AccScan time diff: "
                 << std::chrono::duration_cast<std::chrono::microseconds>(
@@ -72,9 +64,16 @@ int main(int argc, char** argv) {
 
       last = current;
 
-      std::cout << "Sending: " << points.size() << " points" << std::endl;
+      std::cout << "Sending: " << cloud.points.size() << " points" << std::endl;
+      const double stamp_s =
+          static_cast<double>(cloud.timestamp) / 1000000000.0;
+      std::cout << "First point stamp " << stamp_s << '\n';
+      std::cout << "Last point stamp:"
+                << stamp_s +
+                       (static_cast<double>(cloud.points.size()) / 200000.0)
+                << '\n';
 
-      server.put_scan(points);
+      server.put_scan(cloud.points);
     }
   }
 }

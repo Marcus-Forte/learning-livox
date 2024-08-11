@@ -16,12 +16,12 @@ std::mutex g_imu_mutex;
 std::condition_variable g_cv;
 bool g_sync;
 
-// TODO pre-allocate accumulate_scans * 96.
-static PointCloud3 convertData(const LivoxLidarEthernetPacket *eth_packet,
-                               unsigned int data_pts) {
+// TODO pre-allocate accumulate_scans * 96.?
+static std::vector<Point3> convertData(
+    const LivoxLidarEthernetPacket *eth_packet, unsigned int data_pts) {
   const auto *data_ = reinterpret_cast<const LivoxLidarCartesianHighRawPoint *>(
       eth_packet->data);
-  PointCloud3 cloud(data_pts);
+  std::vector<Point3> cloud(data_pts);
   for (auto &point : cloud) {
     point.x = static_cast<float>(data_->x) / 1000.0F;
     point.y = static_cast<float>(data_->y) / 1000.0F;
@@ -32,8 +32,10 @@ static PointCloud3 convertData(const LivoxLidarEthernetPacket *eth_packet,
   return cloud;
 }
 
-Mid360::Mid360(const std::string &&config, size_t accumulate_scans)
-    : config_{config}, accumulate_scans_(accumulate_scans), scan_count_(0) {}
+Mid360::Mid360(const std::string &&config, size_t accumulate_scan_count)
+    : config_{config},
+      accumulate_scan_count_(accumulate_scan_count),
+      scan_count_(0) {}
 
 void Mid360::startSampling() {
   if (!LivoxLidarSdkStart()) {
@@ -67,6 +69,37 @@ void Mid360::setMode(Mode mode) {
   std::unique_lock<std::mutex> lock(g_mutex);
   g_cv.wait(lock, [] { return g_sync; });
 };
+
+void Mid360::setScanPattern(ScanPattern pattern) const {
+  LivoxLidarScanPattern scan_pattern;
+  if (pattern == ScanPattern::Repetitive) {
+    scan_pattern = kLivoxLidarScanPatternRepetive;
+  } else if (pattern == ScanPattern::NonRepetitive) {
+    scan_pattern = kLivoxLidarScanPatternNoneRepetive;
+  } else {
+    scan_pattern = kLivoxLidarScanPatternRepetiveLowFrameRate;
+  }
+  g_sync = false;
+  SetLivoxLidarScanPattern(
+      connection_handle_, scan_pattern,
+      [](livox_status status, uint32_t handle,
+         LivoxLidarAsyncControlResponse *response, void *client_data) {
+        std::lock_guard<std::mutex> lock(g_mutex);
+
+        printf(
+            "SetLivoxLidarScanPattern, status:%u, handle:%u, ret_code:%u, "
+            "error_key:%u\n",
+            status, handle, response->ret_code, response->error_key);
+        g_cv.notify_one();
+        g_sync = true;
+      },
+      nullptr);
+
+  {
+    std::unique_lock<std::mutex> lock(g_mutex);
+    g_cv.wait(lock, [] { return g_sync; });
+  }
+}
 
 void Mid360::init() {
   std::cout << "config:  " << config_ << std::endl;
@@ -110,12 +143,15 @@ void Mid360::init() {
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
 
         auto *data_ = reinterpret_cast<LivoxLidarImuRawPoint *>(data->data);
-
         {
           std::lock_guard<std::mutex> lock(g_imu_mutex);
-          this_->queue_imu_.push_front({data_->gyro_x, data_->gyro_y,
-                                        data_->gyro_z, data_->acc_x,
-                                        data_->acc_y, data_->acc_z});
+          if (this_->queue_imu_.size() > this_->queue_limit_) {
+            this_->queue_imu_.pop_back();
+          }
+          this_->queue_imu_.push_front(
+              {data_->gyro_x, data_->gyro_y, data_->gyro_z, data_->acc_x,
+               data_->acc_y, data_->acc_z,
+               *reinterpret_cast<uint64_t *>(data->timestamp)});
         }
       },
       this);
@@ -129,52 +165,28 @@ void Mid360::init() {
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
 
         const auto cloud = convertData(data, data->dot_num);
-        this_->accumulated_.insert(this_->accumulated_.end(), cloud.begin(),
-                                   cloud.end());
+        auto &pointclud_data = this_->pointclud_data_;
 
-        if (this_->scan_count_++ % this_->accumulate_scans_ == 0) {
+        if (pointclud_data.points.empty()) {
+          pointclud_data.timestamp =
+              *reinterpret_cast<uint64_t *>(data->timestamp);
+        }
+
+        pointclud_data.points.insert(pointclud_data.points.end(), cloud.begin(),
+                                     cloud.end());
+
+        if (++this_->scan_count_ % this_->accumulate_scan_count_ == 0) {
           std::lock_guard<std::mutex> lock(g_lidar_mutex);
-          this_->queue_.push_front(this_->accumulated_);
 
           if (this_->queue_.size() > this_->queue_limit_) {
             this_->queue_.pop_back();
           }
+          this_->queue_.push_front(pointclud_data);
 
-          this_->accumulated_.clear();
+          pointclud_data.points.clear();
         }
       },
       this);
-}
-
-void Mid360::setScanPattern(ScanPattern pattern) const {
-  LivoxLidarScanPattern scan_pattern;
-  if (pattern == ScanPattern::Repetitive) {
-    scan_pattern = kLivoxLidarScanPatternRepetive;
-  } else if (pattern == ScanPattern::NonRepetitive) {
-    scan_pattern = kLivoxLidarScanPatternNoneRepetive;
-  } else {
-    scan_pattern = kLivoxLidarScanPatternRepetiveLowFrameRate;
-  }
-  g_sync = false;
-  SetLivoxLidarScanPattern(
-      connection_handle_, scan_pattern,
-      [](livox_status status, uint32_t handle,
-         LivoxLidarAsyncControlResponse *response, void *client_data) {
-        std::lock_guard<std::mutex> lock(g_mutex);
-
-        printf(
-            "SetLivoxLidarScanPattern, status:%u, handle:%u, ret_code:%u, "
-            "error_key:%u\n",
-            status, handle, response->ret_code, response->error_key);
-        g_cv.notify_one();
-        g_sync = true;
-      },
-      nullptr);
-
-  {
-    std::unique_lock<std::mutex> lock(g_mutex);
-    g_cv.wait(lock, [] { return g_sync; });
-  }
 }
 
 PointCloud3 Mid360::getScan() {

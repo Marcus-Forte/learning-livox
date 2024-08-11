@@ -52,6 +52,6 @@ grpc::Status ScanService::getScan(
   return ::grpc::Status::OK;
 }
 
-void ScanService::putScan(const PointCloud3 &scan) {
-  scan_data_ = std::make_unique<PointCloud3>(scan);
+void ScanService::putScan(const std::vector<Point3> &scan) {
+  scan_data_ = std::make_unique<std::vector<Point3>>(scan);
 }

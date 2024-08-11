@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
+#include <vector>
 
 #include "ILidar.hh"
 #include "livox_sdk.h"
@@ -14,11 +15,11 @@ std::condition_variable g_cv;
 std::mutex g_mutex;
 bool g_sync;
 
-static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
-                               unsigned int data_pts) {
+static std::vector<Point3> convertData(const LivoxEthPacket *eth_packet,
+                                       unsigned int data_pts) {
   const auto *data_ = reinterpret_cast<const LivoxRawPoint *>(eth_packet->data);
 
-  PointCloud3 cloud(data_pts);
+  std::vector<Point3> cloud(data_pts);
   for (auto &point : cloud) {
     point.x = static_cast<float>(data_->x) / 1000.0F;
     point.y = static_cast<float>(data_->y) / 1000.0F;
@@ -29,14 +30,9 @@ static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
   return {cloud};
 }
 
-Mid40::Mid40() = default;
+Mid40::Mid40(size_t accumulate_scan_count)
+    : accumulate_scan_count_(accumulate_scan_count), scan_count_(0) {}
 
-// TODO
-// check
-// state
-// after
-// powering
-// on.
 void Mid40::startSampling() {
   std::cout << "LidarStartSampling" << std::endl;
   LidarStartSampling(
@@ -135,19 +131,25 @@ void Mid40::init() {
       g_connection_handle,
       [](uint8_t handle, LivoxEthPacket *data, uint32_t data_num,
          void *client_data) {
-        auto *this_ = reinterpret_cast<decltype(this)>(client_data);
-        // Convert
         if (data == nullptr) {
-          // std::cout << "cvt: " << data_num << "pts" << std::endl;
-          auto cloud = convertData(data, data_num);
-          {
-            std::lock_guard<std::mutex> lock(g_mutex);
-            this_->queue_.push_front(cloud);
+          return;
+        }
+        auto *this_ = reinterpret_cast<decltype(this)>(client_data);
 
-            if (this_->queue_.size() > this_->queue_limit_) {
-              this_->queue_.pop_back();
-            }
+        const auto cloud = convertData(data, data_num);
+        auto &points = this_->accumulated_.points;
+
+        points.insert(points.end(), cloud.begin(), cloud.end());
+
+        if (this_->scan_count_++ % this_->accumulate_scan_count_ == 0) {
+          std::lock_guard<std::mutex> lock(g_mutex);
+          this_->queue_.push_front(this_->accumulated_);
+
+          if (this_->queue_.size() > this_->queue_limit_) {
+            this_->queue_.pop_back();
           }
+
+          this_->accumulated_.points.clear();
         }
       },
       this);
