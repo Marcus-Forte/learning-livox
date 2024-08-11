@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ILidar.hh"
 #include <deque>
 
-class Mid40 : public ILidar {
+#include "ILidar.hh"
 
-public:
+class Mid40 : public ILidar {
+ public:
   Mid40();
   void init() override;
   PointCloud3 getScan() override;
@@ -13,7 +13,7 @@ public:
   void stopSampling() override;
   void setMode(Mode mode) override;
 
-private:
+ private:
   std::deque<PointCloud3> queue_;
 
   size_t queue_limit_ = 100;

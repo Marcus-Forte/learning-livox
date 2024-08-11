@@ -1,7 +1,4 @@
 
-#include "lidar.grpc.pb.h"
-#include "opengl_srv_points.grpc.pb.h"
-#include <chrono>
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/channel.h>
 #include <grpcpp/client_context.h>
@@ -9,22 +6,41 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server_builder.h>
+#include <grpcpp/support/channel_arguments.h>
+
+#include <chrono>
 #include <memory>
 #include <thread>
 
-// Simple application that subscribes to lidar service and publishes to opengl
-// service: https://github.com/Marcus-Forte/learning-opengl
+#include "lidar.grpc.pb.h"
+#include "opengl_srv_points.grpc.pb.h"
+
+// Simple
+// application
+// that
+// subscribes
+// to
+// lidar
+// service
+// and
+// publishes
+// to
+// opengl
+// service:
+// https://github.com/Marcus-Forte/learning-opengl
 
 gl::PointCloud3 fromLidarService(const lidar::PointCloud3 &msg) {
   gl::PointCloud3 ret;
-  for (const auto &msg_pt : msg.points()) {
+  ret.mutable_points()->Reserve(msg.points_size());
+
+  for (size_t i = 0; i < msg.points_size(); ++i) {
     auto *point = ret.add_points();
-    point->set_x(msg_pt.x());
-    point->set_y(msg_pt.y());
-    point->set_z(msg_pt.z());
-    point->set_r(msg_pt.r());
-    point->set_g(msg_pt.g());
-    point->set_b(msg_pt.b());
+    point->set_x(msg.points(i).x());
+    point->set_y(msg.points(i).y());
+    point->set_z(msg.points(i).z());
+    point->set_r(msg.points(i).r());
+    point->set_g(msg.points(i).g());
+    point->set_b(msg.points(i).b());
   }
   return ret;
 }
@@ -33,7 +49,6 @@ void printUsage() {
             << std::endl;
 }
 int main(int argc, char **argv) {
-
   if (argc < 3) {
     printUsage();
     exit(-1);
@@ -41,12 +56,16 @@ int main(int argc, char **argv) {
   const std::string lidarSrvIp(argv[1]);
   const std::string openGlSrvIp(argv[2]);
 
-  auto channel =
-      grpc::CreateChannel(lidarSrvIp, grpc::InsecureChannelCredentials());
+  grpc::ChannelArguments args;
+  args.SetMaxReceiveMessageSize(1024 * 1024 * 1024);
+  args.SetMaxSendMessageSize(1024 * 1024 * 1024);
+
+  auto channel = grpc::CreateCustomChannel(
+      lidarSrvIp, grpc::InsecureChannelCredentials(), args);
   auto lidar_stub = lidar::LidarService::NewStub(channel);
 
-  auto channel_opengl =
-      grpc::CreateChannel(openGlSrvIp, grpc::InsecureChannelCredentials());
+  auto channel_opengl = grpc::CreateCustomChannel(
+      openGlSrvIp, grpc::InsecureChannelCredentials(), args);
   auto opengl_stub = gl::addToScene::NewStub(channel_opengl);
   google::protobuf::Empty empty_response;
   std::unique_ptr<grpc::ClientContext> lidar_context =
@@ -60,7 +79,6 @@ int main(int argc, char **argv) {
       opengl_stub->streamPointClouds(opengl_context.get(), &empty_response);
   lidar::PointCloud3 msg;
   while (true) {
-
     if (!reader->Read(&msg)) {
       auto state = channel_opengl->GetState(true);
       std::cerr << "Error reading from lidar server " << lidarSrvIp

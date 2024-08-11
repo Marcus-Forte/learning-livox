@@ -10,10 +10,10 @@ struct Point3 {
 };
 
 struct ImuData {
-  float gx; // rad/s
+  float gx;  // rad/s
   float gy;
   float gz;
-  float ax; // g
+  float ax;  // g
   float ay;
   float az;
 };
@@ -23,7 +23,7 @@ enum class Mode { Normal, PowerSave };
 using PointCloud3 = std::vector<Point3>;
 
 class ILidar {
-public:
+ public:
   virtual void init() = 0;
   virtual void startSampling() = 0;
   virtual void stopSampling() = 0;

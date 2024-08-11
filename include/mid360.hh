@@ -1,13 +1,13 @@
 #pragma once
 
-#include "ILidar.hh"
 #include <deque>
 #include <optional>
 #include <string>
 
-class Mid360 : public ILidar {
+#include "ILidar.hh"
 
-public:
+class Mid360 : public ILidar {
+ public:
   enum class ScanPattern { Repetitive, NonRepetitive, LowFrameRate };
   Mid360(const std::string &&config, size_t accumulate_scans);
   void init() override;
@@ -15,11 +15,11 @@ public:
   void startSampling() override;
   void stopSampling() override;
   void setMode(Mode mode) override;
-  void setScanPattern(ScanPattern pattern) const;
 
+  void setScanPattern(ScanPattern pattern) const;
   std::optional<ImuData> getImuSample();
 
-private:
+ private:
   const std::string config_;
   PointCloud3 accumulated_;
   std::deque<PointCloud3> queue_;

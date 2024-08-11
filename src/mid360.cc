@@ -1,11 +1,14 @@
 #include "mid360.hh"
-#include "ILidar.hh"
-#include "livox_lidar_api.h"
+
+#include <livox_lidar_def.h>
+
 #include <condition_variable>
 #include <iostream>
-#include <livox_lidar_def.h>
 #include <mutex>
 #include <string>
+
+#include "ILidar.hh"
+#include "livox_lidar_api.h"
 
 std::mutex g_mutex;
 std::mutex g_lidar_mutex;
@@ -52,9 +55,10 @@ void Mid360::setMode(Mode mode) {
          LivoxLidarAsyncControlResponse *response, void *client_data) {
         if (response == nullptr) {
         }
-        printf("WorkModeCallack, status:%u, handle:%u, ret_code:%u, "
-               "error_key:%u\n",
-               status, handle, response->ret_code, response->error_key);
+        printf(
+            "WorkModeCallack, status:%u, handle:%u, ret_code:%u, "
+            "error_key:%u\n",
+            status, handle, response->ret_code, response->error_key);
         std::lock_guard<std::mutex> lock(g_mutex);
         g_sync = true;
         g_cv.notify_one();
@@ -116,7 +120,6 @@ void Mid360::init() {
       },
       this);
 
-  // TODO maybe accumulation should be done here.
   SetLivoxLidarPointCloudCallBack(
       [](const uint32_t handle, const uint8_t dev_type,
          LivoxLidarEthernetPacket *data, void *client_data) {
@@ -159,9 +162,10 @@ void Mid360::setScanPattern(ScanPattern pattern) const {
          LivoxLidarAsyncControlResponse *response, void *client_data) {
         std::lock_guard<std::mutex> lock(g_mutex);
 
-        printf("SetLivoxLidarScanPattern, status:%u, handle:%u, ret_code:%u, "
-               "error_key:%u\n",
-               status, handle, response->ret_code, response->error_key);
+        printf(
+            "SetLivoxLidarScanPattern, status:%u, handle:%u, ret_code:%u, "
+            "error_key:%u\n",
+            status, handle, response->ret_code, response->error_key);
         g_cv.notify_one();
         g_sync = true;
       },

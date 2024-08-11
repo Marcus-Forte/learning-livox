@@ -1,13 +1,13 @@
-#include "ILidar.hh"
-#include "grpc_server.hh"
-#include "mid40.hh"
 #include <chrono>
 #include <iostream>
 #include <thread>
 
-void printUsage() { std::cout << "Usage: app [powersave]" << std::endl; }
-int main(int argc, char **argv) {
+#include "ILidar.hh"
+#include "grpc_server.hh"
+#include "mid40.hh"
 
+void printUsage() { std::cout << "Usage: app [powersave]" << std::endl; }
+int main(int argc, char** argv) {
   Mid40 lidar;
   lidar.init();
 
@@ -33,7 +33,6 @@ int main(int argc, char **argv) {
   const int accumulate = 100;
   PointCloud3 accumulated;
   while (true) {
-
     auto points = lidar.getScan();
 
     if (points.empty()) {

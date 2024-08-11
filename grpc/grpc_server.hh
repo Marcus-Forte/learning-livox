@@ -1,13 +1,15 @@
 #pragma once
 
-#include "ILidar.hh" // # TODO fix dependency?
-#include "get_points_service.hh"
-#include <future>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/server_builder.h>
 
+#include <future>
+
+#include "ILidar.hh"  // # TODO fix dependency?
+#include "get_points_service.hh"
+
 class gRPCServer {
-public:
+ public:
   gRPCServer();
 
   void start();
@@ -15,7 +17,7 @@ public:
 
   void put_scan(const std::vector<Point3> &scan);
 
-private:
+ private:
   ScanService scan_service_;
   std::unique_ptr<grpc::Server> server_;
   std::future<void> task_;

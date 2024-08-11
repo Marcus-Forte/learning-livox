@@ -1,16 +1,18 @@
 #include "mid40.hh"
-#include "ILidar.hh"
-#include "livox_sdk.h"
+
+#include <livox_def.h>
+
 #include <condition_variable>
 #include <iostream>
-#include <livox_def.h>
 #include <mutex>
 
+#include "ILidar.hh"
+#include "livox_sdk.h"
+
+uint8_t g_connection_handle;
 std::condition_variable g_cv;
 std::mutex g_mutex;
 bool g_sync;
-
-uint8_t connection_handle_ = 0;
 
 static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
                                unsigned int data_pts) {
@@ -29,24 +31,29 @@ static PointCloud3 convertData(const LivoxEthPacket *eth_packet,
 
 Mid40::Mid40() = default;
 
-// TODO check state after powering on.
+// TODO
+// check
+// state
+// after
+// powering
+// on.
 void Mid40::startSampling() {
   std::cout << "LidarStartSampling" << std::endl;
   LidarStartSampling(
-      connection_handle_,
+      g_connection_handle,
       [](livox_status status, uint8_t handle, uint8_t response,
          void *client_data) { std::cout << "start sampling!" << std::endl; },
       nullptr);
 }
 
-void Mid40::stopSampling() { LidarStopSampling(connection_handle_, {}, {}); }
+void Mid40::stopSampling() { LidarStopSampling(g_connection_handle, {}, {}); }
 
 void Mid40::setMode(Mode mode) {
   if (mode == Mode::Normal) {
-    LidarSetMode(connection_handle_, LidarMode::kLidarModeNormal, {}, {});
+    LidarSetMode(g_connection_handle, LidarMode::kLidarModeNormal, {}, {});
   } else if (mode == Mode::PowerSave) {
     std::cout << "powersave\n";
-    LidarSetMode(connection_handle_, LidarMode::kLidarModePowerSaving,
+    LidarSetMode(g_connection_handle, LidarMode::kLidarModePowerSaving,
                  [](livox_status status, uint8_t handle, uint8_t response,
                     void *client_data) {
                    std::cout
@@ -57,7 +64,6 @@ void Mid40::setMode(Mode mode) {
   }
 }
 void Mid40::init() {
-
   if (!Init()) {
     Uninit();
     std::cout << "Livox-SDK init fail!" << std::endl;
@@ -84,13 +90,13 @@ void Mid40::init() {
     std::cout << "Found Livox IP: " << info->ip << std::endl;
 
     const auto result =
-        AddLidarToConnect(info->broadcast_code, &connection_handle_);
-    if (result == kStatusSuccess && connection_handle_ < kMaxLidarCount) {
+        AddLidarToConnect(info->broadcast_code, &g_connection_handle);
+    if (result == kStatusSuccess && g_connection_handle < kMaxLidarCount) {
       std::cout << "Lidar connected: " << info->broadcast_code << std::endl;
 
     } else {
       printf("Add lidar to connect is failed : %d %d \n", result,
-             connection_handle_);
+             g_connection_handle);
     }
 
     if (info->dev_type == kDeviceTypeHub) {
@@ -124,9 +130,9 @@ void Mid40::init() {
   std::cout << "Connected!" << std::endl;
 
   std::cout << "Set cartesian coordinates " << std::endl;
-  SetCartesianCoordinate(connection_handle_, {}, nullptr);
+  SetCartesianCoordinate(g_connection_handle, {}, nullptr);
   SetDataCallback(
-      connection_handle_,
+      g_connection_handle,
       [](uint8_t handle, LivoxEthPacket *data, uint32_t data_num,
          void *client_data) {
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);

@@ -1,6 +1,8 @@
 #include "get_points_service.hh"
-#include <chrono>
+
 #include <grpcpp/support/status.h>
+
+#include <chrono>
 #include <memory>
 #include <thread>
 
@@ -9,10 +11,11 @@
 
 ScanService::ScanService() = default;
 
-grpc::Status
-ScanService::getScan(::grpc::ServerContext *context,
-                     const ::google::protobuf::Empty * /*request*/,
-                     ::grpc::ServerWriter<lidar::PointCloud3> *writer) {
+grpc::Status ScanService::getScan(
+    ::grpc::ServerContext *context,
+    const ::google::protobuf::Empty * /*request*/
+    ,
+    ::grpc::ServerWriter<lidar::PointCloud3> *writer) {
   static bool s_client_connected = false;
   if (s_client_connected) {
     return {grpc::StatusCode::RESOURCE_EXHAUSTED, "Only one client supported"};
@@ -21,23 +24,23 @@ ScanService::getScan(::grpc::ServerContext *context,
   std::cout << "Start stream." << std::endl;
   s_client_connected = true;
   while (!context->IsCancelled()) {
-
     if (scan_data_ != nullptr) {
-
       lidar::PointCloud3 point_cloud;
 
       for (const auto &point : *scan_data_) {
-        auto pt = point_cloud.add_points();
-        pt->set_x(point.x);
-        pt->set_y(point.y);
-        pt->set_z(point.z);
+        auto *msg_pt = point_cloud.add_points();
+        msg_pt->set_x(point.x);
+        msg_pt->set_y(point.y);
+        msg_pt->set_z(point.z);
 
-        float r, g, b;
-        Int2RGB(static_cast<float>(point.intensity), r, g, b);
+        float pt_r;
+        float pt_g;
+        float pt_b;
+        Int2RGB(static_cast<float>(point.intensity), pt_r, pt_g, pt_b);
         // 2D Lidar
-        pt->set_r(r);
-        pt->set_g(g);
-        pt->set_b(b);
+        msg_pt->set_r(pt_r);
+        msg_pt->set_g(pt_g);
+        msg_pt->set_b(pt_b);
       }
       writer->Write(point_cloud);
       scan_data_.reset();

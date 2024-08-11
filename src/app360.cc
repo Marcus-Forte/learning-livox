@@ -1,14 +1,14 @@
-#include "grpc_server.hh"
-#include "mid360.hh"
 #include <chrono>
 #include <iostream>
+
+#include "grpc_server.hh"
+#include "mid360.hh"
 
 void printUsage() {
   std::cout << "Usage: app [config] [accusamples] [mode: 0, 1,2,3]"
             << std::endl;
 }
-int main(int argc, char **argv) {
-
+int main(int argc, char** argv) {
   if (argc < 4) {
     printUsage();
     exit(0);
@@ -44,7 +44,6 @@ int main(int argc, char **argv) {
   std::chrono::high_resolution_clock::time_point current;
 
   while (true) {
-
     const auto imu = lidar.getImuSample();
 
     if (imu.has_value()) {
@@ -64,7 +63,6 @@ int main(int argc, char **argv) {
     const auto points = lidar.getScan();
 
     if (!points.empty()) {
-
       current = std::chrono::high_resolution_clock::now();
       std::cout << "AccScan time diff: "
                 << std::chrono::duration_cast<std::chrono::microseconds>(

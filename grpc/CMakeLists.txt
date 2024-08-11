@@ -20,7 +20,6 @@ if(gRPC_FOUND)
     get_points_service.cc)
     target_link_libraries(grpc_server protolib)
     target_include_directories(grpc_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_SOURCE_DIR}/include )
-    set_target_properties(grpc_server PROPERTIES CXX_CLANG_TIDY "")
 
     # Proxy
     generate_proto(${CMAKE_CURRENT_SOURCE_DIR}/proto/opengl_srv_points.proto)

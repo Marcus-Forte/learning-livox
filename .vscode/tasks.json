@@ -4,7 +4,13 @@
 		{
 			"type": "shell",
 			"label": "deploy",
-			"command": "scp ${workspaceFolder}/build/app360 root@${config:target_ip}:",
+			"command": "scp ${workspaceFolder}/build/app360 root@${config:target_ip}:" ,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "deploy-glproxy",
+			"command": "scp ${workspaceFolder}/build/grpc/gl_proxy root@${config:target_ip}:/usr/bin",
 			"problemMatcher": []
 		}
 	]
