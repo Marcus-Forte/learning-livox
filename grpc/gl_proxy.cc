@@ -12,22 +12,12 @@
 #include <memory>
 #include <thread>
 
+#include "colormap.hh"
 #include "lidar.grpc.pb.h"
 #include "opengl_srv_points.grpc.pb.h"
 
-// Simple
-// application
-// that
-// subscribes
-// to
-// lidar
-// service
-// and
-// publishes
-// to
-// opengl
-// service:
-// https://github.com/Marcus-Forte/learning-opengl
+// Simple application that subscribes to lidar service and publishes to opengl
+// service: https://github.com/Marcus-Forte/learning-opengl
 
 gl::PointCloud3 fromLidarService(const lidar::PointCloud3 &msg) {
   gl::PointCloud3 ret;
@@ -38,9 +28,14 @@ gl::PointCloud3 fromLidarService(const lidar::PointCloud3 &msg) {
     point->set_x(msg.points(i).x());
     point->set_y(msg.points(i).y());
     point->set_z(msg.points(i).z());
-    point->set_r(msg.points(i).r());
-    point->set_g(msg.points(i).g());
-    point->set_b(msg.points(i).b());
+    float pt_r;
+    float pt_g;
+    float pt_b;
+
+    Int2RGB(msg.points(i).intensity(), pt_r, pt_g, pt_b);
+    point->set_r(pt_r);
+    point->set_g(pt_g);
+    point->set_b(pt_b);
   }
   return ret;
 }

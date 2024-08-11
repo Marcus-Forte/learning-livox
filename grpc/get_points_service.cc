@@ -32,15 +32,7 @@ grpc::Status ScanService::getScan(
         msg_pt->set_x(point.x);
         msg_pt->set_y(point.y);
         msg_pt->set_z(point.z);
-
-        float pt_r;
-        float pt_g;
-        float pt_b;
-        Int2RGB(static_cast<float>(point.intensity), pt_r, pt_g, pt_b);
-        // 2D Lidar
-        msg_pt->set_r(pt_r);
-        msg_pt->set_g(pt_g);
-        msg_pt->set_b(pt_b);
+        msg_pt->set_intensity(point.intensity);
       }
       writer->Write(point_cloud);
       scan_data_.reset();

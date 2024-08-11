@@ -2,17 +2,15 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 package lidar;
 
-message Point3 {
+message PointI3 {
     float x=1;
     float y=2;
     float z=3;
-    optional float r=4;
-    optional float g=5;
-    optional float b=6;
+    uint32 intensity=4;
 }
 
 message PointCloud3 { 
-    repeated Point3 points=1;
+    repeated PointI3 points=1;
 }
 
 service LidarService {
